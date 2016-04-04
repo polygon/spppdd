@@ -1,26 +1,38 @@
-from collections import namedtuple
-
 class BackendUnavailableError(Exception): pass
 class NoBackendsFoundError(Exception): pass
 class DeviceNotFoundError(Exception): pass
 
 
-Keystate = namedtuple('Keystate', ['up', 'right', 'left', 'down', 'ok', 'window', 'back', 'light', 'menu'])
+class UsbBackend(object):
+    def __init__(self, idVendor: int, idProduct: int):
+        raise NotImplementedError('Use implementations of UsbBackend')
 
+    def read_keystate(self, timeout: int or None=None) -> int or None:
+        """
+        Reads the keystate from the interrupt endpoint
 
-def parse_keystate(state):
-    keystate = Keystate(
-        up=(state & 0x8000) > 0,
-        right=(state & 0x1000) > 0,
-        left=(state & 0X2000) > 0,
-        down=(state & 0x4000) > 0,
-        ok=(state & 0x0800) > 0,
-        window=(state & 0x0400) > 0,
-        back=(state & 0x0200) > 0,
-        light=False,
-        menu=(state & 0x0100) > 0
-    )
-    return keystate
+        This function reads the next key event from the interrupt endpoint.
+        It should be called often since only a limited number (in my case two)
+        of events are buffered.
+
+        This function will block until an event is read or the timeout
+        is reached in which case it returns None.
+
+        The keystate is returned as an uint16 bitfield.
+        @param timeout: Timeout in milliseconds
+        @return: uimt16 bitfield with button states or None when timed out
+        """
+        raise NotImplementedError('Use implementations of UsbBackend')
+
+    def write_display(self, frame: bytes) -> None:
+        """
+        Write data frame to the LCD bulk endpoint
+
+        Raw function that accepts and data length.
+        @param frame: Data frame to write
+        @return: None
+        """
+        raise NotImplementedError('Use implementations of UsbBackend')
 
 
 class PyUsbBackend(object):
@@ -59,7 +71,7 @@ class PyUsbBackend(object):
             return None
 
         keystate = int(keystate_raw[0]) << 8 + int(keystate_raw[1])
-        return parse_keystate(keystate)
+        return keystate
 
     def write_display(self, frame):
         if not isinstance(frame, bytes):
@@ -68,7 +80,15 @@ class PyUsbBackend(object):
         self.lcd_out.write(frame)
 
 
-def get_usb_backend(backend):
+def get_usb_backend(backend=None):
+    """
+    Returns the USB backend class
+
+    Returns the requested backend if available. Returns the first available
+    backend if no specific one is requested.
+    @param backend: Name of the specific required backend
+    @return: UsbBackend derived class
+    """
     backends = {
         'pyusb': PyUsbBackend
     }
