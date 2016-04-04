@@ -20,7 +20,8 @@ def draw_lissajous(a, b, h):
     x = (159 * np.sin(a*t) + 159).astype(np.uint)
     y = (119 * np.cos(b*t) + 119).astype(np.uint)
     picture = np.zeros((320, 240, 3))
-    picture[x, y, :] = np.array(colorsys.hsv_to_rgb(h, 1.0, 1.0))
+    picture[:, :, :] = colorsys.hsv_to_rgb(h, 1.0, 1.0)
+    picture[x, y, :] = np.array(colorsys.hsv_to_rgb((h+0.5)%1.0, 1.0, 1.0))
     return picture
 
 
